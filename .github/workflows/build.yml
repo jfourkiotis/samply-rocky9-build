@@ -1,4 +1,4 @@
-name: Build samply on Rocky Linux 9
+name: Build samply + self-hosted profiler on Rocky Linux 9
 
 on:
   push:
@@ -7,8 +7,14 @@ on:
   schedule:
     - cron: "0 6 * * 1"
 
+env:
+  # Pin the Firefox Profiler frontend to a specific upstream commit so
+  # builds are reproducible. Bump this to pick up new viewer features.
+  PROFILER_REF: 3a952f5aee16fd8f08e5b4afd7827e7a9fa5fcd4
+
 jobs:
-  build:
+  build-samply:
+    name: Build samply (Rocky Linux 9)
     runs-on: ubuntu-latest
     container:
       image: rockylinux:9
@@ -37,9 +43,79 @@ jobs:
         run: |
           "$GITHUB_WORKSPACE/dist/bin/samply" --version
 
-      - name: Upload binary artifact
+      - name: Upload samply binary
         uses: actions/upload-artifact@v4
         with:
-          name: samply-rocky9-x86_64
+          name: samply-binary
           path: dist/bin/samply
+          if-no-files-found: error
+
+  build-profiler-frontend:
+    name: Build Firefox Profiler frontend
+    runs-on: ubuntu-latest
+    container:
+      image: node:20-bullseye
+    steps:
+      - name: Install git
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates
+
+      - name: Clone firefox-devtools/profiler at pinned commit
+        run: |
+          git clone https://github.com/firefox-devtools/profiler.git profiler
+          cd profiler
+          git checkout "$PROFILER_REF"
+          git --no-pager log -1 --oneline
+
+      - name: yarn install
+        working-directory: profiler
+        run: |
+          corepack enable
+          yarn install --frozen-lockfile
+
+      - name: yarn build-prod
+        working-directory: profiler
+        run: yarn build-prod
+
+      - name: Upload profiler dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: profiler-dist
+          path: profiler/dist
+          if-no-files-found: error
+
+  bundle:
+    name: Bundle samply + profiler dist
+    runs-on: ubuntu-latest
+    needs: [build-samply, build-profiler-frontend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download samply binary
+        uses: actions/download-artifact@v4
+        with:
+          name: samply-binary
+          path: stage/bin
+
+      - name: Download profiler dist
+        uses: actions/download-artifact@v4
+        with:
+          name: profiler-dist
+          path: stage/profiler-dist
+
+      - name: Assemble bundle
+        run: |
+          chmod +x stage/bin/samply
+          cp scripts/serve.sh stage/serve.sh
+          chmod +x stage/serve.sh
+          cp README.md stage/README.md
+          ls -lR stage | head -50
+          tar -C stage -czf samply-rocky9-bundle.tar.gz .
+
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: samply-rocky9-bundle
+          path: samply-rocky9-bundle.tar.gz
           if-no-files-found: error
