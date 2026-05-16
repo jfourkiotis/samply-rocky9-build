@@ -71,7 +71,33 @@ egress those requests will simply fail, and:
 - **Firefox Profiler frontend**: edit the `PROFILER_REF` env var at the top of
   [.github/workflows/build.yml](.github/workflows/build.yml) and commit.
 
-## Getting a binary out of CI without a release
+## Getting the bundle
+
+### Preferred: download from a GitHub Release
+
+Releases are served from `objects.githubusercontent.com`, which most corporate
+firewalls allow by default (unlike Actions artifacts, which redirect to
+`*.blob.core.windows.net` and are commonly blocked).
+
+```
+https://github.com/jfourkiotis/samply-rocky9-build/releases/latest
+```
+
+The `samply-rocky9-bundle.tar.gz` asset is attached to each release.
+
+### Cutting a new release
+
+Push a tag matching `v*`:
+
+```
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The workflow's `release` job runs on tag push, rebuilds the bundle, and
+publishes a release with auto-generated notes and the tarball attached.
+
+### Fallback: workflow artifact (requires GitHub login + Azure Blob reachable)
 
 ```
 gh run list --workflow build.yml
