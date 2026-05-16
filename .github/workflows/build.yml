@@ -1,0 +1,45 @@
+name: Build samply on Rocky Linux 9
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: rockylinux:9
+    steps:
+      - name: Install build dependencies
+        run: |
+          dnf -y install gcc gcc-c++ make pkgconfig openssl-devel \
+            curl ca-certificates which tar gzip
+
+      - name: Install Rust toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+            | sh -s -- -y --default-toolchain stable --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Show toolchain versions
+        run: |
+          rustc --version
+          cargo --version
+
+      - name: cargo install samply
+        run: |
+          cargo install samply --root "$GITHUB_WORKSPACE/dist"
+
+      - name: Sanity check binary
+        run: |
+          "$GITHUB_WORKSPACE/dist/bin/samply" --version
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: samply-rocky9-x86_64
+          path: dist/bin/samply
+          if-no-files-found: error
