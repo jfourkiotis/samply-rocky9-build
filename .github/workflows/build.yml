@@ -20,9 +20,12 @@ jobs:
       image: rockylinux:9
     steps:
       - name: Install build dependencies
+        # `curl-minimal` ships in the rockylinux:9 image and conflicts with
+        # the full `curl` package, so we don't install `curl` here — the
+        # minimal build is fine for fetching the rustup installer.
         run: |
           dnf -y install gcc gcc-c++ make pkgconfig openssl-devel \
-            curl ca-certificates which tar gzip
+            ca-certificates which tar gzip
 
       - name: Install Rust toolchain
         run: |
