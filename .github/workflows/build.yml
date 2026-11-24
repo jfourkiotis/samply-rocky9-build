@@ -53,6 +53,7 @@ jobs:
           name: samply-binary
           path: dist/bin/samply
           if-no-files-found: error
+          retention-days: 1
 
   build-profiler-frontend:
     name: Build Firefox Profiler frontend
@@ -89,6 +90,7 @@ jobs:
           name: profiler-dist
           path: profiler/dist
           if-no-files-found: error
+          retention-days: 1
 
   bundle:
     name: Bundle samply + profiler dist
@@ -124,6 +126,7 @@ jobs:
           name: samply-rocky9-bundle
           path: samply-rocky9-bundle.tar.gz
           if-no-files-found: error
+          retention-days: 7
 
   release:
     name: Publish GitHub Release
